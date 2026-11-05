@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Work Log</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }</style>
+</head>
+<body class="bg-[#FAFAFA] text-neutral-800 min-h-screen">
+
+  <header class="bg-white border-b border-neutral-200 sticky top-0 z-20">
+    <div class="max-w-4xl mx-auto px-8 py-3 flex justify-between items-center">
+      <span class="text-lg font-bold tracking-tight text-neutral-900">Work Log</span>
+      <div class="flex items-center space-x-2">
+        <button onclick="openModal('authorModal')" class="text-xs font-medium text-neutral-600 hover:text-neutral-900 bg-neutral-100 hover:bg-neutral-200 px-3 py-1.5 rounded transition cursor-pointer">
+          + アカウント追加
+        </button>
+        <button onclick="openModal('postModal')" class="bg-neutral-900 hover:bg-black text-white text-xs font-medium px-3.5 py-1.5 rounded transition shadow-sm cursor-pointer">
+          新規投稿
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-4xl mx-auto px-8 py-6">
+    <!-- 検索フォーム -->
+    <form method="GET" action="/" class="mb-4">
+      <input type="text" name="search" value="{{ search }}" placeholder="タイトルや内容、タグで検索..." 
+             class="w-full px-3.5 py-2.5 bg-white rounded border border-neutral-200 text-xs focus:outline-none focus:border-neutral-400 transition"
+             onchange="this.form.submit()">
+      <input type="hidden" name="author" value="{{ selected_author }}">
+      <input type="hidden" name="category" value="{{ selected_category }}">
+    </form>
+
+    <!-- フィルターエリア -->
+    <div class="bg-white border border-neutral-200/80 rounded p-3 mb-6 space-y-2 text-xs">
+      <div class="flex items-center space-x-2 overflow-x-auto pb-1">
+        <span class="text-[10px] font-bold text-neutral-400 uppercase tracking-wider shrink-0 w-16">Member:</span>
+        <a href="/?search={{ search }}&category={{ selected_category }}" class="px-2.5 py-1 rounded text-xs font-medium {% if not selected_author %}bg-neutral-900 text-white{% else %}bg-neutral-100 text-neutral-600 hover:bg-neutral-200{% endif %} transition whitespace-nowrap">全員</a>
+        {% for author in authors %}
+        <a href="/?author={{ author.email }}&search={{ search }}&category={{ selected_category }}" class="px-2.5 py-1 rounded text-xs font-medium {% if selected_author == author.email %}bg-neutral-900 text-white{% else %}bg-neutral-100 text-neutral-700 hover:bg-neutral-200{% endif %} transition whitespace-nowrap">
+          {{ author.display_name }}
+        </a>
+        {% endfor %}
+      </div>
+
+      <!-- カテゴリータブ（最後に＋ボタンを配置） -->
+      <div class="flex items-center space-x-2 overflow-x-auto pt-1 border-t border-neutral-100">
+        <span class="text-[10px] font-bold text-neutral-400 uppercase tracking-wider shrink-0 w-16">Category:</span>
+        <a href="/?search={{ search }}&author={{ selected_author }}" class="px-2.5 py-1 rounded text-xs font-medium {% if not selected_category %}bg-neutral-900 text-white{% else %}bg-neutral-100 text-neutral-600 hover:bg-neutral-200{% endif %} transition whitespace-nowrap">すべて</a>
+        {% for cat in categories %}
+        <a href="/?category={{ cat }}&search={{ search }}&author={{ selected_author }}" class="px-2.5 py-1 rounded text-xs font-medium {% if selected_category == cat %}bg-neutral-900 text-white{% else %}bg-neutral-100 text-neutral-700 hover:bg-neutral-200{% endif %} transition whitespace-nowrap">
+          # {{ cat }}
+        </a>
+        {% endfor %}
+        <!-- カテゴリー追加用＋ボタン -->
+        <button onclick="openModal('categoryModal')" class="px-2 py-1 rounded text-xs font-bold bg-neutral-200 hover:bg-neutral-300 text-neutral-700 transition whitespace-nowrap cursor-pointer">
+          ＋ 追加
+        </button>
+      </div>
+    </div>
+
+    <!-- ログ一覧 -->
+    <div class="space-y-3">
+      {% if manuals %}
+        {% for m in manuals %}
+        <div class="manual-card bg-white border border-neutral-200/80 rounded p-4 hover:border-neutral-400 hover:shadow-xs transition cursor-pointer"
+             data-id="{{ m.id }}"
+             data-title="{{ m.title | e }}"
+             data-name="{{ m.display_name | e }}"
+             data-dept="{{ m.department | e }}"
+             data-timestamp="{{ m.timestamp | e }}"
+             data-content="{{ m.content | e }}"
+             data-reflink="{{ m.ref_link | e }}"
+             data-fileurl="{{ m.file_url | e }}"
+             data-category="{{ m.category | e }}">
+          <div class="flex items-center space-x-2 mb-1.5 text-[11px] text-neutral-500">
+            <span class="font-medium text-neutral-800">{{ m.display_name }}</span>
+            <span class="text-neutral-300">/</span>
+            <span>{{ m.timestamp }}</span>
+          </div>
+          <h2 class="text-sm font-bold text-neutral-900 mb-1 leading-snug">{{ m.title }}</h2>
+          <p class="text-neutral-600 text-xs mb-2.5 leading-relaxed">
+            {{ m.content[:40] }}{% if m.content|length > 40 %}...{% endif %}
+          </p>
+          <div class="flex flex-wrap gap-1 items-center">
+            {% if m.category %}
+              {% for cat in m.category.split(',') %}
+                <span class="text-[10px] px-2 py-0.5 rounded bg-indigo-50 text-indigo-600 font-medium"># {{ cat.strip() }}</span>
+              {% endfor %}
+            {% endif %}
+            <span class="text-[10px] px-2 py-0.5 rounded bg-neutral-100 text-neutral-600"># {{ m.department or '未設定' }}</span>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="text-center py-12 text-neutral-400 bg-white border border-neutral-200 rounded text-xs">該当する業務ログがありません。</div>
+      {% endif %}
+    </div>
+  </main>
+
+  <!-- 詳細表示モーダル -->
+  <div id="detailModal" onclick="closeOnOutsideClick(event, 'detailModal')" class="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white border border-neutral-200 rounded-lg max-w-2xl w-full max-h-[85vh] overflow-y-auto p-6 shadow-xl relative" onclick="event.stopPropagation()">
+      <button onclick="closeModal('detailModal')" class="absolute top-4 right-4 text-neutral-400 hover:text-neutral-700 bg-neutral-100 hover:bg-neutral-200 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition cursor-pointer">✕</button>
+      <div id="modalContent"></div>
+    </div>
+  </div>
+
+  <!-- 新規カテゴリー追加モーダル -->
+  <div id="categoryModal" onclick="closeOnOutsideClick(event, 'categoryModal')" class="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white border border-neutral-200 rounded-lg max-w-sm w-full p-6 shadow-xl relative" onclick="event.stopPropagation()">
+      <button onclick="closeModal('categoryModal')" class="absolute top-4 right-4 text-neutral-400 hover:text-neutral-700 bg-neutral-100 hover:bg-neutral-200 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition cursor-pointer">✕</button>
+      <h2 class="text-sm font-bold mb-3">新しいカテゴリーの追加</h2>
+      <form action="/add_category" method="POST" class="space-y-3 text-xs">
+        <div>
+          <input type="text" name="new_category" placeholder="例: マニュアル、トラブルシューティング" required class="w-full p-2 border rounded border-neutral-200">
+        </div>
+        <button type="submit" class="w-full bg-neutral-900 text-white py-2 rounded font-bold hover:bg-black transition cursor-pointer">追加する</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 編集モーダル -->
+  <div id="editModal" onclick="closeOnOutsideClick(event, 'editModal')" class="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white border border-neutral-200 rounded-lg max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 shadow-xl relative" onclick="event.stopPropagation()">
+      <button onclick="closeModal('editModal')" class="absolute top-4 right-4 text-neutral-400 hover:text-neutral-700 bg-neutral-100 hover:bg-neutral-200 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition cursor-pointer">✕</button>
+      <h2 class="text-sm font-bold mb-3">業務ログの編集</h2>
+      <form id="editForm" method="POST" class="space-y-3 text-xs">
+        <div>
+          <label class="block font-bold mb-1 text-neutral-500">タイトル*</label>
+          <input type="text" id="editTitle" name="title" required class="w-full p-2 border rounded border-neutral-200">
+        </div>
+        <div>
+          <label class="block font-bold mb-1 text-neutral-500">カテゴリー選択</label>
+          <div class="grid grid-cols-2 gap-2 bg-neutral-50 p-2.5 rounded border border-neutral-200">
+            {% for cat in categories %}
+            <label class="flex items-center space-x-2 cursor-pointer">
+              <input type="checkbox" name="categories" value="{{ cat }}" class="edit-cat-checkbox rounded text-indigo-600 focus:ring-0">
+              <span># {{ cat }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+        <div>
+          <label class="block font-bold mb-1 text-neutral-500">内容・手順*</label>
+          <textarea id="editContent" name="content" rows="5" required class="w-full p-2 border rounded border-neutral-200"></textarea>
+        </div>
+        <div>
+          <label class="block font-bold mb-1 text-neutral-500">関連リンク (URL)</label>
+          <input type="text" id="editRefLink" name="ref_link" class="w-full p-2 border rounded border-neutral-200">
+        </div>
+        <button type="submit" class="w-full bg-neutral-900 text-white py-2 rounded font-bold hover:bg-black transition cursor-pointer">更新を保存する</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- アカウント追加モーダル -->
+  <div id="authorModal" onclick="closeOnOutsideClick(event, 'authorModal')" class="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white border border-neutral-200 rounded-lg max-w-lg w-full p-6 shadow-xl relative" onclick="event.stopPropagation()">
+      <button onclick="closeModal('authorModal')" class="absolute top-4 right-4 text-neutral-400 hover:text-neutral-700 bg-neutral-100 hover:bg-neutral-200 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition cursor-pointer">✕</button>
+      <h2 class="text-sm font-bold mb-3">メンバーアカウント追加</h2>
+      <form action="/add_author" method="POST" class="space-y-3 text-xs">
+        <div>
+          <label class="block font-bold mb-1 text-neutral-500">メールアドレス (ID)*</label>
+          <input type="email" name="email" required class="w-full p-2 border rounded border-neutral-200">
+        </div>
+        <div>
+          <label class="block font-bold mb-1 text-neutral-500">表示名 (お名前)*</label>
+          <input type="text" name="display_name" required class="w-full p-2 border rounded border-neutral-200">
+        </div>
+        <div>
+          <label class="block font-bold mb-1 text-neutral-500">所属部署</label>
+          <input type="text" name="department" class="w-full p-2 border rounded border-neutral-200">
+        </div>
+        <button type="submit" class="w-full bg-neutral-900 text-white py-2 rounded font-bold hover:bg-black transition cursor-pointer">登録する</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 新規投稿モーダル（すっきりした6項目に整理） -->
+  <div id="postModal" onclick="closeOnOutsideClick(event, 'postModal')" class="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white border border-neutral-200 rounded-lg max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 shadow-xl relative" onclick="event.stopPropagation()">
+      <button onclick="closeModal('postModal')" class="absolute top-4 right-4 text-neutral-400 hover:text-neutral-700 bg-neutral-100 hover:bg-neutral-200 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition cursor-pointer">✕</button>
+      <h2 class="text-sm font-bold mb-4">新規業務ログ投稿</h2>
+      
+      <form action="/add_manual" method="POST" enctype="multipart/form-data" class="space-y-3 text-xs">
+        <!-- 1. 投稿者 -->
+        <div>
+          <label class="block font-bold mb-1 text-neutral-500">投稿者*</label>
+          <select name="email" required class="w-full p-2 border rounded border-neutral-200 bg-white">
+            {% for author in authors %}
+            <option value="{{ author.email }}">{{ author.display_name }} ({{ author.email }})</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- 2. タイトル -->
+        <div>
+          <label class="block font-bold mb-1 text-neutral-500">タイトル*</label>
+          <input type="text" name="title" required class="w-full p-2 border rounded border-neutral-200">
+        </div>
+
+        <!-- 3. カテゴリー選択 -->
+        <div>
+          <label class="block font-bold mb-1 text-neutral-500">カテゴリー選択（複数可）</label>
+          <div class="grid grid-cols-2 gap-2 bg-neutral-50 p-2.5 rounded border border-neutral-200">
+            {% for cat in categories %}
+            <label class="flex items-center space-x-2 cursor-pointer">
+              <input type="checkbox" name="categories" value="{{ cat }}" class="rounded text-indigo-600 focus:ring-0">
+              <span># {{ cat }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- 4. 画像添付 -->
+        <div>
+          <label class="block font-bold mb-1 text-neutral-500">画像添付（ファイル選択 または クリップボードから貼り付け）</label>
+          <input type="file" name="images" multiple accept="image/*" class="w-full p-2 border rounded border-neutral-200 mb-2">
+          
+          <div id="pasteArea" tabindex="0" class="border-2 border-dashed border-neutral-300 rounded p-3 text-center text-neutral-400 hover:border-neutral-500 cursor-pointer transition focus:outline-none focus:border-indigo-500">
+            ここに画像をCtrl+V (Cmd+V) で貼り付け可能
+            <div id="pastePreview" class="mt-2 hidden">
+              <img id="pastedImg" class="max-h-28 mx-auto rounded border">
+              <span class="text-[10px] text-green-600 block mt-1">✓ クリップボードからの画像をセットしました</span>
+            </div>
+          </div>
+          <input type="hidden" name="pasted_image" id="pastedImageInput">
+        </div>
+
+        <!-- 5. 内容 -->
+        <div>
+          <label class="block font-bold mb-1 text-neutral-500">内容*</label>
+          <textarea name="content" rows="5" required class="w-full p-2 border rounded border-neutral-200"></textarea>
+        </div>
+
+        <!-- 6. 関連リンク -->
+        <div>
+          <label class="block font-bold mb-1 text-neutral-500">関連リンク (URL)</label>
+          <input type="text" name="ref_link" class="w-full p-2 border rounded border-neutral-200">
+        </div>
+
+        <button type="submit" class="w-full bg-neutral-900 text-white py-2.5 rounded font-bold hover:bg-black transition cursor-pointer mt-2">投稿を保存する</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+    function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+    function closeOnOutsideClick(event, modalId) {
+      if (event.target.id === modalId) {
+        closeModal(modalId);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      document.querySelectorAll('.manual-card').forEach(card => {
+        card.addEventListener('click', () => {
+          const data = {
+            id: card.dataset.id,
+            title: card.dataset.title,
+            name: card.dataset.name,
+            dept: card.dataset.dept,
+            timestamp: card.dataset.timestamp,
+            content: card.dataset.content,
+            ref_link: card.dataset.reflink,
+            file_url: card.dataset.fileurl,
+            category: card.dataset.category
+          };
+          openDetailModal(data);
+        });
+      });
+
+      const pasteArea = document.getElementById('pasteArea');
+      if (pasteArea) {
+        pasteArea.addEventListener('paste', (e) => {
+          const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+          for (let item of items) {
+            if (item.kind === 'file' && item.type.startsWith('image/')) {
+              const blob = item.getAsFile();
+              const reader = new FileReader();
+              reader.onload = (event) => {
+                document.getElementById('pastedImageInput').value = event.target.result;
+                document.getElementById('pastedImg').src = event.target.result;
+                document.getElementById('pastePreview').classList.remove('hidden');
+              };
+              reader.readAsDataURL(blob);
+              break;
+            }
+          }
+        });
+      }
+    });
+
+    function openDetailModal(data) {
+      let imagesHtml = '';
+      if (data.file_url) {
+        const paths = data.file_url.split(',');
+        let imgTags = '';
+        paths.forEach(p => {
+          if (p.trim()) {
+            imgTags += `<a href="/uploads/${p.trim()}" target="_blank" class="block w-36 h-28 bg-neutral-100 rounded border overflow-hidden"><img src="/uploads/${p.trim()}" class="w-full h-full object-cover"></a>`;
+          }
+        });
+        if (imgTags) {
+          imagesHtml = `<div class="mb-3"><h3 class="text-[11px] font-bold text-neutral-400 uppercase mb-1.5">添付画像</h3><div class="flex gap-2 overflow-x-auto">${imgTags}</div></div>`;
+        }
+      }
+
+      let catBadges = '';
+      if (data.category) {
+        data.category.split(',').forEach(cat => {
+          catBadges += `<span class="text-xs px-2.5 py-0.5 rounded bg-indigo-50 text-indigo-600 font-medium mr-1.5"># ${cat.trim()}</span>`;
+        });
+      }
+
+      let linkHtml = data.ref_link ? `<div class="mb-3"><h3 class="text-[11px] font-bold text-neutral-400 uppercase mb-1">関連リンク</h3><a href="${data.ref_link}" target="_blank" class="text-indigo-600 underline text-xs">${data.ref_link}</a></div>` : '';
+
+      const safeTitle = (data.title || '').replace(/'/g, "&apos;").replace(/"/g, "&quot;");
+      const safeCat = (data.category || '').replace(/'/g, "&apos;").replace(/"/g, "&quot;");
+      const safeLink = (data.ref_link || '').replace(/'/g, "&apos;").replace(/"/g, "&quot;");
+
+      document.getElementById('modalContent').innerHTML = `
+        <div class="flex items-center justify-between mb-3 pb-2.5 border-b">
+          <div>
+            <p class="text-xs font-bold text-neutral-900">${data.name} <span class="text-[11px] font-normal text-neutral-500">(${data.dept || '所属未設定'})</span></p>
+            <p class="text-[10px] text-neutral-400">${data.timestamp}</p>
+          </div>
+          <div class="flex items-center space-x-1.5">
+            <button onclick='openEditModal(${data.id}, ${JSON.stringify(data.title)}, ${JSON.stringify(data.category)}, ${JSON.stringify(data.content)}, ${JSON.stringify(data.ref_link)})' class="text-[11px] bg-neutral-100 hover:bg-neutral-200 text-neutral-700 px-2.5 py-1 rounded transition cursor-pointer">編集</button>
+            <form action="/delete_manual/${data.id}" method="POST" onsubmit="return confirm('本当に削除しますか？');">
+              <button type="submit" class="text-[11px] bg-red-50 hover:bg-red-100 text-red-600 px-2.5 py-1 rounded transition cursor-pointer">削除</button>
+            </form>
+          </div>
+        </div>
+        <div class="mb-2">${catBadges}</div>
+        <h1 class="text-base font-bold text-neutral-900 mb-3">${data.title}</h1>
+        ${imagesHtml}
+        <div class="mb-3">
+          <h3 class="text-[11px] font-bold text-neutral-400 uppercase mb-1">内容</h3>
+          <div class="text-xs text-neutral-700 bg-neutral-50 p-3 rounded border whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto">${data.content}</div>
+        </div>
+        ${linkHtml}
+      `;
+      openModal('detailModal');
+    }
+
+    function openEditModal(id, title, category, content, refLink) {
+      closeModal('detailModal');
+      document.getElementById('editForm').action = `/edit_manual/${id}`;
+      document.getElementById('editTitle').value = title || '';
+      document.getElementById('editContent').value = content || '';
+      document.getElementById('editRefLink').value = refLink || '';
+
+      const checkboxes = document.querySelectorAll('.edit-cat-checkbox');
+      const currentCats = category ? category.split(',').map(c => c.trim()) : [];
+      checkboxes.forEach(cb => {
+        cb.checked = currentCats.includes(cb.value);
+      });
+
+      openModal('editModal');
+    }
+  </script>
+</body>
+</html>
